@@ -120,7 +120,7 @@
 
 namespace Peregrine
 {
-  uint64_t binom(uint32_t n, uint32_t k)
+  inline uint64_t binom(uint32_t n, uint32_t k)
   {
     uint64_t res = 1;
     // Since C(n, k) = C(n, n-k)
@@ -143,7 +143,7 @@ namespace Peregrine
   // XXX: this is a weak alias. is there any way to make this a strong typedef
   // without a performance degradation?
   using Pattern = std::vector<uint32_t>;
-  Pattern unused_labels;
+  inline Pattern unused_labels;
 
   struct CompleteMatch
   {
@@ -2146,7 +2146,7 @@ namespace Peregrine
     std::vector<std::vector<uint32_t>> &cands;
   };
 
-  uint32_t num_mappings(SmallGraph &data_graph, const SmallGraph &p)
+  inline uint32_t num_mappings(SmallGraph &data_graph, const SmallGraph &p)
   {
     std::vector<std::vector<uint32_t>> cands(p.num_vertices()+2, std::vector<uint32_t>{});
 

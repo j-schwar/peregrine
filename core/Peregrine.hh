@@ -58,10 +58,10 @@ namespace Peregrine
   // or so task_ctr can't be modified at runtime
   namespace Context
   {
-    std::shared_ptr<AnalyzedPattern> current_pattern;
-    DataGraph *data_graph;
-    std::atomic<uint64_t> task_ctr(0);
-    std::atomic<uint64_t> gcount(0);
+    inline std::shared_ptr<AnalyzedPattern> current_pattern;
+    inline DataGraph *data_graph;
+    inline std::atomic<uint64_t> task_ctr(0);
+    inline std::atomic<uint64_t> gcount(0);
   }
 
   struct flag_t { bool on, working; };
@@ -133,7 +133,7 @@ namespace Peregrine
     return lcount;
   }
 
-  void count_worker(unsigned tid, DataGraph *dg, Barrier &b)
+  inline void count_worker(unsigned tid, DataGraph *dg, Barrier &b)
   {
     (void)tid; // unused
 
@@ -198,7 +198,7 @@ namespace Peregrine
     typename AggregatorType,
     typename F
   >
-  void map_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
+  inline void map_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
   {
     // an extra pre-allocated cand vector for scratch space, and one for anti-vertex
     std::vector<std::vector<uint32_t>> cands(dg->rbi.query_graph.num_vertices() + 2);
@@ -254,7 +254,7 @@ namespace Peregrine
     typename AggregatorType,
     typename F
   >
-  void single_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
+  inline void single_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
   {
     // an extra pre-allocated cand vector for scratch space, and one for anti-vertex
     std::vector<std::vector<uint32_t>> cands(dg->rbi.query_graph.num_vertices() + 2);
@@ -310,7 +310,7 @@ namespace Peregrine
     typename AggregatorType,
     typename F
   >
-  void vector_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
+  inline void vector_worker(unsigned tid, DataGraph *dg, Barrier &b, AggregatorType &a, F &&p)
   {
     // an extra pre-allocated cand vector for scratch space, and one for anti-vertex
     std::vector<std::vector<uint32_t>> cands(dg->rbi.query_graph.num_vertices() + 2);
@@ -360,7 +360,7 @@ namespace Peregrine
   }
 
   template <typename AggregatorType>
-  void aggregator_thread(Barrier &barrier, AggregatorType &agg)
+  inline void aggregator_thread(Barrier &barrier, AggregatorType &agg)
   {
     using namespace std::chrono_literals;
 
@@ -393,6 +393,7 @@ namespace Peregrine
     typename PF,
     typename VF = decltype(default_viewer<GivenAggValueT>)
   >
+  inline
   std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<GivenAggValueT>()))>>
   match(DataGraphT &&data_graph,
       const std::vector<SmallGraph> &patterns,
@@ -498,6 +499,7 @@ namespace Peregrine
   }
 
   template <typename AggKeyT, typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
+  inline
   std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
   match_multi
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
@@ -629,6 +631,7 @@ namespace Peregrine
   }
 
   template <typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
+  inline
   std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
   match_single
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
@@ -754,6 +757,7 @@ namespace Peregrine
   }
 
   template <typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
+  inline
   std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
   match_vector
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
@@ -888,7 +892,7 @@ namespace Peregrine
   }
 
   // for each pattern, calculate the vertex-based count
-  std::vector<std::pair<SmallGraph, uint64_t>> convert_counts(std::vector<std::pair<SmallGraph, uint64_t>> edge_based, const std::vector<SmallGraph> &original_patterns)
+  inline std::vector<std::pair<SmallGraph, uint64_t>> convert_counts(std::vector<std::pair<SmallGraph, uint64_t>> edge_based, const std::vector<SmallGraph> &original_patterns)
   {
     std::vector<std::pair<SmallGraph, uint64_t>> vbased(edge_based.size());
 
@@ -907,6 +911,7 @@ namespace Peregrine
   }
 
   template <typename DataGraphT>
+  inline
   std::vector<std::pair<SmallGraph, uint64_t>>
   count(DataGraphT &&data_graph, const std::vector<SmallGraph> &patterns, size_t nworkers)
   {
