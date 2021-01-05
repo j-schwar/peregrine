@@ -394,7 +394,7 @@ namespace Peregrine
     typename VF = decltype(default_viewer<GivenAggValueT>)
   >
   inline
-  std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<GivenAggValueT>()))>>
+  std::vector<std::pair<SmallGraph, GivenAggValueT>>
   match(DataGraphT &&data_graph,
       const std::vector<SmallGraph> &patterns,
       size_t nworkers,
@@ -408,8 +408,7 @@ namespace Peregrine
 
     // automatically wrap trivial types so they have .reset() etc
     constexpr bool should_be_wrapped = std::is_trivial<GivenAggValueT>::value;
-    using AggValueT = std::conditional<should_be_wrapped,
-      trivial_wrapper<GivenAggValueT>, GivenAggValueT>::type;
+    using AggValueT = std::conditional_t<should_be_wrapped, trivial_wrapper<GivenAggValueT>, GivenAggValueT>;
     auto view = [&viewer](auto &&v)
     {
       if constexpr (should_be_wrapped)
@@ -438,7 +437,7 @@ namespace Peregrine
                 << "\n";
     }
 
-    std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<GivenAggValueT>()))>> result;
+    std::vector<std::pair<SmallGraph, AggValueT>> result;
 
     // optimize AggKeyT == Pattern
     if constexpr (std::is_same_v<AggKeyT, Pattern>)
@@ -482,8 +481,6 @@ namespace Peregrine
 
       result.insert(result.end(), vector_result.begin(), vector_result.end());
       result.insert(result.end(), multi_result.begin(), multi_result.end());
-
-      return result;
     }
     else
     {
@@ -495,16 +492,25 @@ namespace Peregrine
       delete Context::data_graph;
     }
 
-    return result;
+    if constexpr (std::is_same_v<GivenAggValueT, AggValueT>) {
+      return result;
+    } else {
+      std::vector<std::pair<SmallGraph, GivenAggValueT>> projected_results;
+      projected_results.reserve(result.size());
+      for (auto &[sg, wrapped_value] : result) {
+        projected_results.emplace_back(sg, wrapped_value.val);
+      }
+      return projected_results;
+    }
   }
 
   template <typename AggKeyT, typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
   inline
-  std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
+  std::vector<std::pair<SmallGraph, AggValueT>>
   match_multi
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
   {
-    std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>> results;
+    std::vector<std::pair<SmallGraph, AggValueT>> results;
 
     if (patterns.empty()) return results;
 
@@ -606,7 +612,7 @@ namespace Peregrine
         }
       }
 
-      for (auto &[k, v] : aggregator.latest_result)
+      for (auto &[k, v] : aggregator.global)
       {
         results.emplace_back(SmallGraph(p, k), v);
       }
@@ -632,11 +638,11 @@ namespace Peregrine
 
   template <typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
   inline
-  std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
+  std::vector<std::pair<SmallGraph, AggValueT>>
   match_single
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
   {
-    std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>> results;
+    std::vector<std::pair<SmallGraph, AggValueT>> results;
 
     if (patterns.empty()) return results;
 
@@ -695,7 +701,7 @@ namespace Peregrine
 
       // need to get thread-local values before killing threads
       aggregator.get_result();
-      results.emplace_back(p, aggregator.latest_result.load());
+      results.emplace_back(p, aggregator.global);
 
       if constexpr (Stoppable == STOPPABLE)
       {
@@ -758,11 +764,11 @@ namespace Peregrine
 
   template <typename AggValueT, OnTheFlyOption OnTheFly, StoppableOption Stoppable, typename PF, typename VF>
   inline
-  std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>>
+  std::vector<std::pair<SmallGraph, AggValueT>>
   match_vector
   (PF &&process, VF &&viewer, size_t nworkers, const std::vector<SmallGraph> &patterns)
   {
-    std::vector<std::pair<SmallGraph, decltype(std::declval<VF>()(std::declval<AggValueT>()))>> results;
+    std::vector<std::pair<SmallGraph, AggValueT>> results;
 
     if (patterns.empty()) return results;
 
@@ -865,10 +871,10 @@ namespace Peregrine
       std::vector<uint32_t> ls(p.get_labels().cbegin(), p.get_labels().cend());
       uint32_t pl = dg->new_label;
       uint32_t l = 0;
-      for (auto &m : aggregator.latest_result)
+      for (auto &m : aggregator.global)
       {
         ls[pl] = aggregator.VEC_AGG_OFFSET + l;
-        results.emplace_back(SmallGraph(p, ls), m.load());
+        results.emplace_back(SmallGraph(p, ls), m);
         l += 1;
       }
     }
